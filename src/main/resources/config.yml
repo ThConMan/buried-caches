@@ -1,0 +1,109 @@
+trigger:
+  # Only count real survival mining by default.
+  require-survival: true
+
+  # A treasure cannot roll before this many eligible natural blocks.
+  minimum-blocks: 40
+
+  # 0.004 is roughly one successful roll per 250 eligible blocks after the minimum.
+  chance-per-block: 0.004
+
+  # Guarantees that a genuinely unlucky player eventually finds one.
+  pity-after-blocks: 450
+
+  # Prevents a hammer or fast miner from receiving several treasures at once.
+  cooldown-seconds: 240
+
+  # Keeps the mechanic underground. Raise or remove this check in code if desired.
+  maximum-y: 64
+
+  allowed-environments:
+    - NORMAL
+
+  disabled-worlds: []
+
+  # Placing any of these materials records its exact location in the chunk.
+  # Breaking a recorded placed block never counts, preventing place/break farms.
+  eligible-materials:
+    - STONE
+    - DEEPSLATE
+    - TUFF
+    - GRANITE
+    - DIORITE
+    - ANDESITE
+    - COAL_ORE
+    - DEEPSLATE_COAL_ORE
+    - COPPER_ORE
+    - DEEPSLATE_COPPER_ORE
+    - IRON_ORE
+    - DEEPSLATE_IRON_ORE
+    - GOLD_ORE
+    - DEEPSLATE_GOLD_ORE
+    - REDSTONE_ORE
+    - DEEPSLATE_REDSTONE_ORE
+    - LAPIS_ORE
+    - DEEPSLATE_LAPIS_ORE
+    - DIAMOND_ORE
+    - DEEPSLATE_DIAMOND_ORE
+    - EMERALD_ORE
+    - DEEPSLATE_EMERALD_ORE
+
+ownership:
+  # Only the finder can open, break, hopper, or explode the barrel during this window.
+  lock-seconds: 30
+
+  # Removes the generated barrel once its inventory is empty.
+  remove-empty-barrels: true
+
+loot:
+  # Vanilla loot tables should normally return at least one stack. These values
+  # guarantee that a successful treasure is never empty if another plugin or a
+  # datapack changes one of those tables.
+  empty-fallback-material: GOLD_INGOT
+  empty-fallback-minimum: 2
+  empty-fallback-maximum: 5
+
+# Each successful treasure chooses one enabled tier by weight, then asks the
+# configured vanilla loot table to fill it. Other plugins remain independent.
+#
+# celebration picks the effect bundle played on discovery:
+#   STANDARD - level-up chime and particles only the finder notices.
+#   GRAND    - enchanting-table swirl heard by nearby players too.
+#   MYTHIC   - totem burst and fireworks the whole cave hears.
+# broadcast announces the find to every online player.
+tiers:
+  common:
+    enabled: true
+    display-name: Common
+    color: YELLOW
+    weight: 60
+    loot-table: minecraft:chests/abandoned_mineshaft
+    celebration: STANDARD
+    broadcast: false
+
+  rare:
+    enabled: true
+    display-name: Rare
+    color: AQUA
+    weight: 28
+    loot-table: minecraft:chests/buried_treasure
+    celebration: STANDARD
+    broadcast: false
+
+  epic:
+    enabled: true
+    display-name: Epic
+    color: LIGHT_PURPLE
+    weight: 10
+    loot-table: minecraft:chests/ancient_city
+    celebration: GRAND
+    broadcast: true
+
+  legendary:
+    enabled: true
+    display-name: Legendary
+    color: GOLD
+    weight: 2
+    loot-table: minecraft:chests/end_city_treasure
+    celebration: MYTHIC
+    broadcast: true

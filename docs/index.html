@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BuriedCaches — treasure hidden in the act of mining</title>
+<meta name="description" content="A Paper plugin that turns ordinary mining into treasure hunting: tiered buried caches, pity timers, anti-farm protection, and server-wide legendary moments.">
+<style>
+  :root {
+    --bg: #14100c;
+    --panel: #1d1812;
+    --panel-2: #241d15;
+    --border: #3a3023;
+    --text: #e8ddcc;
+    --muted: #a89878;
+    --gold: #e8b64c;
+    --aqua: #55d6d6;
+    --purple: #c77dff;
+    --yellow: #e8d44c;
+    --green: #7fc95c;
+    --red: #e06c5c;
+    --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.65;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    padding: 72px 0 56px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(232, 182, 76, 0.10), transparent),
+      repeating-linear-gradient(45deg, transparent, transparent 34px, rgba(232, 182, 76, 0.025) 34px, rgba(232, 182, 76, 0.025) 36px);
+    border-bottom: 1px solid var(--border);
+  }
+  header .crate { font-size: 56px; line-height: 1; margin-bottom: 16px; }
+  h1 {
+    font-size: 44px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    font-weight: normal;
+  }
+  header p.tag {
+    margin-top: 12px;
+    font-size: 19px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .badges { margin-top: 28px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    background: var(--panel);
+  }
+  .badge a { color: var(--gold); text-decoration: none; }
+
+  main { padding: 24px 0 80px; }
+  section { margin-top: 56px; }
+  h2 {
+    font-size: 26px;
+    color: var(--gold);
+    font-weight: normal;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  h3 { font-size: 19px; color: var(--text); margin: 26px 0 10px; font-weight: normal; }
+  p + p { margin-top: 12px; }
+  a { color: var(--aqua); }
+  .muted { color: var(--muted); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 8px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .card b { color: var(--gold); font-weight: normal; font-size: 17px; display: block; margin-bottom: 6px; }
+  .card p { font-size: 15px; color: var(--muted); }
+
+  .tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+  .tier {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 14.5px;
+  }
+  .tier .name { font-size: 18px; margin-bottom: 4px; }
+  .tier .odds { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .tier p { color: var(--muted); margin-top: 8px; }
+  .tier.common { border-top-color: var(--yellow); } .tier.common .name { color: var(--yellow); }
+  .tier.rare { border-top-color: var(--aqua); } .tier.rare .name { color: var(--aqua); }
+  .tier.epic { border-top-color: var(--purple); } .tier.epic .name { color: var(--purple); }
+  .tier.legendary { border-top-color: var(--gold); } .tier.legendary .name { color: var(--gold); }
+
+  pre {
+    background: #0e0b08;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin: 14px 0;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  .c { color: #7a6f5c; } .k { color: var(--aqua); } .v { color: var(--yellow); } .s { color: var(--green); }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border: 1px solid var(--border); }
+  th { background: var(--panel-2); color: var(--gold); font-weight: normal; }
+  td { background: var(--panel); }
+  td code { white-space: nowrap; }
+  .tablewrap { overflow-x: auto; }
+
+  .steps { counter-reset: step; list-style: none; margin-top: 8px; }
+  .steps li {
+    counter-increment: step;
+    padding: 10px 0 10px 44px;
+    position: relative;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 10px;
+    width: 28px; height: 28px;
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 14px;
+  }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 0 48px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  @media (max-width: 560px) { h1 { font-size: 32px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="crate">🛢️</div>
+    <h1>BuriedCaches</h1>
+    <p class="tag">Treasure hidden in the act of mining itself.</p>
+    <div class="badges">
+      <span class="badge">Paper plugin</span>
+      <span class="badge">Vanilla loot tables</span>
+      <span class="badge"><a href="https://github.com/ThConMan/buried-caches">Source on GitHub</a></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section>
+  <h2>What it does</h2>
+  <p>
+    While a player mines natural stone and ore underground, every block they break
+    carries a small chance of uncovering a <b>Buried Cache</b> — a barrel that appears
+    in the mined space, filled from a vanilla loot table, and locked to its finder for
+    a short window. No structures to hunt, no maps, no commands: the treasure is in
+    the digging you were already doing.
+  </p>
+  <p>
+    Rarity escalates the moment. A Common find chimes softly for the finder. A
+    Legendary find erupts in totem particles and fireworks, and the whole server
+    hears about it.
+  </p>
+</section>
+
+<section>
+  <h2>The tiers</h2>
+  <div class="tiers">
+    <div class="tier common">
+      <div class="name">Common</div>
+      <div class="odds">weight 60 · abandoned_mineshaft</div>
+      <p>Rails, bread, name tags, the occasional golden apple. A pleasant surprise.</p>
+    </div>
+    <div class="tier rare">
+      <div class="name">Rare</div>
+      <div class="odds">weight 28 · buried_treasure</div>
+      <p>Iron, gold, TNT — and a shot at a heart of the sea.</p>
+    </div>
+    <div class="tier epic">
+      <div class="name">Epic</div>
+      <div class="odds">weight 10 · ancient_city</div>
+      <p>Enchanted books, disc fragments, echo shards. Broadcast to the server.</p>
+    </div>
+    <div class="tier legendary">
+      <div class="name">Legendary</div>
+      <div class="odds">weight 2 · end_city_treasure</div>
+      <p>Enchanted diamond gear. Totem burst, fireworks, server-wide announcement.</p>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:14px">
+    Every tier is defined in the config — rename them, reweight them, point them at any
+    loot table (vanilla or datapack-provided), or add new ones.
+  </p>
+</section>
+
+<section>
+  <h2>Fairness &amp; anti-farm</h2>
+  <div class="cards">
+    <div class="card">
+      <b>Pity timer</b>
+      <p>A guaranteed find after 450 eligible blocks (configurable). Nobody stays unlucky forever.</p>
+    </div>
+    <div class="card">
+      <b>Placed blocks never count</b>
+      <p>Player-placed stone and ore is recorded in chunk persistent data and excluded — surviving restarts, pistons, and explosions. Place-and-break farms don't work.</p>
+    </div>
+    <div class="card">
+      <b>Cooldown</b>
+      <p>A per-player cooldown (4 minutes by default) stops hammers and beacon-haste miners from chaining finds.</p>
+    </div>
+    <div class="card">
+      <b>Finder ownership</b>
+      <p>For 30 seconds only the finder can open or break the barrel — and it can't be hoppered or exploded out from under them.</p>
+    </div>
+    <div class="card">
+      <b>Survival only</b>
+      <p>Creative and spectator breaks don't roll (configurable), and the mechanic stays below Y=64.</p>
+    </div>
+    <div class="card">
+      <b>No leftovers</b>
+      <p>Emptied cache barrels remove themselves. If the mined space closes before the barrel appears, the loot is delivered straight to the finder.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Installation</h2>
+  <ol class="steps">
+    <li>Download <code>buried-caches-&lt;version&gt;.jar</code> from the <a href="https://github.com/ThConMan/buried-caches/releases">releases page</a>, or build it from source.</li>
+    <li>Drop the jar into your server's <code>plugins/</code> folder.</li>
+    <li>Restart. The default <code>config.yml</code> is generated on first run.</li>
+  </ol>
+  <p class="muted">Requires Paper (or a fork) matching the <code>api-version</code> declared in <code>plugin.yml</code>.</p>
+</section>
+
+<section>
+  <h2>Commands &amp; permissions</h2>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Command</th><th>Permission</th><th>What it does</th></tr>
+    <tr>
+      <td><code>/buriedcaches stats [player]</code></td>
+      <td><code>buriedcaches.stats</code> <span class="muted">(everyone)</span></td>
+      <td>Lifetime finds by tier. Viewing another player requires admin.</td>
+    </tr>
+    <tr>
+      <td><code>/buriedcaches status [player]</code></td>
+      <td><code>buriedcaches.admin</code> <span class="muted">(op)</span></td>
+      <td>Blocks since last find, cooldown remaining, forced flag.</td>
+    </tr>
+    <tr>
+      <td><code>/buriedcaches force &lt;player&gt;</code></td>
+      <td><code>buriedcaches.admin</code></td>
+      <td>Guarantees a find on that player's next eligible block.</td>
+    </tr>
+    <tr>
+      <td><code>/buriedcaches reset &lt;player&gt;</code></td>
+      <td><code>buriedcaches.admin</code></td>
+      <td>Resets roll progress (lifetime stats are kept).</td>
+    </tr>
+    <tr>
+      <td><code>/buriedcaches reload</code></td>
+      <td><code>buriedcaches.admin</code></td>
+      <td>Reloads the configuration in place.</td>
+    </tr>
+  </table>
+  </div>
+  <p class="muted">Alias: <code>/bcaches</code></p>
+</section>
+
+<section>
+  <h2>Configuration reference</h2>
+
+  <h3>Trigger</h3>
+<pre><code><span class="k">trigger:</span>
+  <span class="c"># Only count real survival mining.</span>
+  <span class="k">require-survival:</span> <span class="v">true</span>
+
+  <span class="c"># A treasure cannot roll before this many eligible natural blocks.</span>
+  <span class="k">minimum-blocks:</span> <span class="v">40</span>
+
+  <span class="c"># Roughly one successful roll per 250 eligible blocks after the minimum.</span>
+  <span class="k">chance-per-block:</span> <span class="v">0.004</span>
+
+  <span class="c"># Guarantees that a genuinely unlucky player eventually finds one.</span>
+  <span class="k">pity-after-blocks:</span> <span class="v">450</span>
+
+  <span class="c"># Prevents a hammer or fast miner from receiving several treasures at once.</span>
+  <span class="k">cooldown-seconds:</span> <span class="v">240</span>
+
+  <span class="c"># Keeps the mechanic underground.</span>
+  <span class="k">maximum-y:</span> <span class="v">64</span>
+
+  <span class="k">allowed-environments:</span> [<span class="s">NORMAL</span>]
+  <span class="k">disabled-worlds:</span> []
+
+  <span class="c"># Blocks that count toward a roll. Placing one records its location</span>
+  <span class="c"># in the chunk, so breaking a placed block never counts.</span>
+  <span class="k">eligible-materials:</span>
+    - <span class="s">STONE</span>
+    - <span class="s">DEEPSLATE</span>
+    - <span class="s">TUFF</span>
+    <span class="c"># ...granite, diorite, andesite, and every overworld ore variant</span></code></pre>
+
+  <h3>Ownership</h3>
+<pre><code><span class="k">ownership:</span>
+  <span class="c"># Only the finder can open, break, hopper, or explode the barrel during this window.</span>
+  <span class="k">lock-seconds:</span> <span class="v">30</span>
+
+  <span class="c"># Removes the generated barrel once its inventory is empty.</span>
+  <span class="k">remove-empty-barrels:</span> <span class="v">true</span></code></pre>
+
+  <h3>Tiers</h3>
+  <p>
+    A successful roll picks one enabled tier by weight, then asks the configured
+    loot table to fill the barrel. <code>celebration</code> picks the effect bundle:
+    <code>STANDARD</code> (finder-only chime), <code>GRAND</code> (enchanting-table
+    swirl nearby players hear too), or <code>MYTHIC</code> (totem burst and fireworks
+    the whole cave hears). <code>broadcast</code> announces the find to every online
+    player.
+  </p>
+<pre><code><span class="k">tiers:</span>
+  <span class="k">legendary:</span>
+    <span class="k">enabled:</span> <span class="v">true</span>
+    <span class="k">display-name:</span> <span class="s">Legendary</span>
+    <span class="k">color:</span> <span class="s">GOLD</span>
+    <span class="k">weight:</span> <span class="v">2</span>
+    <span class="k">loot-table:</span> <span class="s">minecraft:chests/end_city_treasure</span>
+    <span class="k">celebration:</span> <span class="s">MYTHIC</span>
+    <span class="k">broadcast:</span> <span class="v">true</span></code></pre>
+
+  <h3>Loot fallback</h3>
+<pre><code><span class="k">loot:</span>
+  <span class="c"># If a loot table returns nothing (another plugin or datapack changed it),</span>
+  <span class="c"># a successful find still pays out.</span>
+  <span class="k">empty-fallback-material:</span> <span class="s">GOLD_INGOT</span>
+  <span class="k">empty-fallback-minimum:</span> <span class="v">2</span>
+  <span class="k">empty-fallback-maximum:</span> <span class="v">5</span></code></pre>
+</section>
+
+<section>
+  <h2>Building from source</h2>
+<pre><code>git clone https://github.com/ThConMan/buried-caches.git
+cd buried-caches
+./gradlew build</code></pre>
+  <p class="muted">
+    The jar lands in <code>build/libs/</code>. Gradle resolves the JDK 25 toolchain
+    automatically. The test suite runs as part of <code>build</code>.
+  </p>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    BuriedCaches · MIT License · inspired by a buried-treasure datapack ·
+    <a href="https://github.com/ThConMan/buried-caches">GitHub</a>
+  </div>
+</footer>
+
+</body>
+</html>

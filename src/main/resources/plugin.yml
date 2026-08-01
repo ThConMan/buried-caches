@@ -1,0 +1,18 @@
+name: BuriedCaches
+version: ${version}
+main: dev.whitl.buriedcaches.BuriedCachesPlugin
+api-version: '26.1'
+description: Configurable buried caches that appear while players mine natural cave blocks.
+author: ThConMan
+commands:
+  buriedcaches:
+    description: Inspect, test, reset, or reload BuriedCaches.
+    usage: /buriedcaches <stats|status|force|reset|reload>
+    aliases: [bcaches]
+permissions:
+  buriedcaches.admin:
+    description: Allows BuriedCaches status, force, reset, and reload commands.
+    default: op
+  buriedcaches.stats:
+    description: Allows players to view their own buried cache find statistics.
+    default: true
