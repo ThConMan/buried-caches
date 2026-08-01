@@ -66,7 +66,10 @@ public final class TreasureSpawner {
                 player.getUniqueId().toString());
         barrel.getPersistentDataContainer().set(lockUntilKey, PersistentDataType.LONG, lockUntil);
         barrel.getPersistentDataContainer().set(tierKey, PersistentDataType.STRING, treasure.tier().id());
-        List<ItemStack> overflow = fill(barrel.getInventory(), treasure.items());
+        // Fill the snapshot inventory, not the live one: update() writes the
+        // snapshot back to the block, so items placed in the live inventory
+        // before update() would be wiped by the empty snapshot.
+        List<ItemStack> overflow = fill(barrel.getSnapshotInventory(), treasure.items());
         barrel.update(true, false);
 
         for (ItemStack stack : overflow) {
