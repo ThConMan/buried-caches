@@ -55,8 +55,7 @@ public final class TreasureListener implements Listener {
         if (!plugin.isWorldAllowed(block.getWorld()) || block.getY() > plugin.maximumY()) {
             return;
         }
-        if (plugin.getConfig().getBoolean("trigger.require-survival", true)
-                && player.getGameMode() != GameMode.SURVIVAL) {
+        if (plugin.requireSurvival() && player.getGameMode() != GameMode.SURVIVAL) {
             return;
         }
 

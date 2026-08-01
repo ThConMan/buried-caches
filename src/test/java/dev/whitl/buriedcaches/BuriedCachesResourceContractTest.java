@@ -30,6 +30,7 @@ class BuriedCachesResourceContractTest {
 
         assertTrue(config.contains("cooldown-seconds: 240"));
         assertTrue(config.contains("pity-after-blocks: 450"));
+        assertTrue(config.contains("expire-unopened-minutes: 60"));
         assertTrue(config.contains("placed block never counts"));
         assertTrue(config.contains("minecraft:chests/abandoned_mineshaft"));
         assertTrue(config.contains("empty-fallback-material: GOLD_INGOT"));

@@ -5,6 +5,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -13,7 +14,10 @@ import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.inventory.EquipmentSlot;
 
 public final class TreasureProtectionListener implements Listener {
 
@@ -27,8 +31,13 @@ public final class TreasureProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void protectOpening(PlayerInteractEvent event) {
+        // Interact fires once per hand; without this the denial message prints twice.
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
         Block block = event.getClickedBlock();
-        if (block == null || !(block.getState() instanceof Barrel barrel)) {
+        if (block == null || block.getType() != Material.BARREL
+                || !(block.getState() instanceof Barrel barrel)) {
             return;
         }
         if (spawner.isLockedFor(barrel, event.getPlayer().getUniqueId())) {
@@ -41,7 +50,10 @@ public final class TreasureProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void protectBreaking(BlockBreakEvent event) {
-        if (!(event.getBlock().getState() instanceof Barrel barrel)) {
+        // Type check first: getState() snapshots a block entity, and this runs for
+        // every block every player breaks.
+        Block block = event.getBlock();
+        if (block.getType() != Material.BARREL || !(block.getState() instanceof Barrel barrel)) {
             return;
         }
         if (spawner.isLockedFor(barrel, event.getPlayer().getUniqueId())) {
@@ -69,10 +81,17 @@ public final class TreasureProtectionListener implements Listener {
         event.blockList().removeIf(this::isLockedTreasure);
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void cancelExpiryOnOpen(InventoryOpenEvent event) {
+        if (event.getInventory().getHolder() instanceof Barrel barrel) {
+            spawner.markOpened(barrel);
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void removeEmptyTreasure(InventoryCloseEvent event) {
-        if (!plugin.getConfig().getBoolean("ownership.remove-empty-barrels", true)
-                || !(event.getInventory().getHolder() instanceof Barrel barrel)
+        if (!(event.getInventory().getHolder() instanceof Barrel barrel)
+                || !plugin.removeEmptyBarrels()
                 || !spawner.isTreasure(barrel)) {
             return;
         }
@@ -85,7 +104,27 @@ public final class TreasureProtectionListener implements Listener {
         });
     }
 
+    /**
+     * Sweeps caches whose expiry fell in a server restart or an unloaded chunk. The
+     * in-session timer covers the normal case; this catches the rest as players move
+     * back through an area.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void sweepExpiredCaches(ChunkLoadEvent event) {
+        if (!plugin.expiryPolicy().enabled() || event.isNewChunk()) {
+            return;
+        }
+        for (BlockState state : event.getChunk()
+                .getTileEntities(block -> block.getType() == Material.BARREL, false)) {
+            if (state instanceof Barrel barrel && spawner.isExpired(barrel, System.currentTimeMillis())) {
+                barrel.getBlock().setType(Material.AIR, false);
+            }
+        }
+    }
+
     private boolean isLockedTreasure(Block block) {
-        return block.getState() instanceof Barrel barrel && spawner.isLocked(barrel);
+        return block.getType() == Material.BARREL
+                && block.getState() instanceof Barrel barrel
+                && spawner.isLocked(barrel);
     }
 }

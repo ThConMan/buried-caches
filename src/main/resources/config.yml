@@ -55,6 +55,12 @@ ownership:
   # Removes the generated barrel once its inventory is empty.
   remove-empty-barrels: true
 
+  # Caches nobody ever opened are cleaned up after this many minutes so caves do
+  # not slowly fill with abandoned barrels. Opening one cancels its expiry, so a
+  # looted cache you leave partly full stays where it is. Set to 0 to keep every
+  # unopened cache forever.
+  expire-unopened-minutes: 60
+
 loot:
   # Vanilla loot tables should normally return at least one stack. These values
   # guarantee that a successful treasure is never empty if another plugin or a

@@ -28,6 +28,7 @@ public final class TreasureSpawner {
     private final NamespacedKey ownerKey;
     private final NamespacedKey lockUntilKey;
     private final NamespacedKey tierKey;
+    private final NamespacedKey expiresAtKey;
 
     public TreasureSpawner(BuriedCachesPlugin plugin, TreasureLootService lootService,
             PlayerProgressStore progress) {
@@ -38,6 +39,7 @@ public final class TreasureSpawner {
         this.ownerKey = new NamespacedKey(plugin, "owner");
         this.lockUntilKey = new NamespacedKey(plugin, "lock_until");
         this.tierKey = new NamespacedKey(plugin, "tier");
+        this.expiresAtKey = new NamespacedKey(plugin, "expires_at");
     }
 
     public void spawn(Player player, Location minedLocation) {
@@ -56,8 +58,9 @@ public final class TreasureSpawner {
             return;
         }
 
-        long lockUntil = System.currentTimeMillis()
-                + plugin.getConfig().getLong("ownership.lock-seconds", 30L) * 1_000L;
+        long now = System.currentTimeMillis();
+        long lockUntil = now + plugin.lockMillis();
+        CacheExpiryPolicy expiry = plugin.expiryPolicy();
         barrel.customName(Component.text(treasure.tier().displayName() + " Buried Cache",
                         treasure.tier().color())
                 .decoration(TextDecoration.ITALIC, false));
@@ -66,6 +69,10 @@ public final class TreasureSpawner {
                 player.getUniqueId().toString());
         barrel.getPersistentDataContainer().set(lockUntilKey, PersistentDataType.LONG, lockUntil);
         barrel.getPersistentDataContainer().set(tierKey, PersistentDataType.STRING, treasure.tier().id());
+        if (expiry.enabled()) {
+            barrel.getPersistentDataContainer().set(expiresAtKey, PersistentDataType.LONG,
+                    expiry.expiresAt(now));
+        }
         // Fill the snapshot inventory, not the live one: update() writes the
         // snapshot back to the block, so items placed in the live inventory
         // before update() would be wiped by the empty snapshot.
@@ -77,7 +84,47 @@ public final class TreasureSpawner {
                     .forEach(leftover -> player.getWorld().dropItemNaturally(player.getLocation(), leftover));
         }
 
+        if (expiry.enabled()) {
+            scheduleExpiry(block, expiry.expiryMillis());
+        }
         announce(player, minedLocation, treasure.tier(), false);
+    }
+
+    /**
+     * Clears the expiry stamp once a player has opened the cache. From then on the
+     * barrel is ordinary storage and only the empty-barrel cleanup can remove it.
+     */
+    public void markOpened(Barrel barrel) {
+        if (!isTreasure(barrel)
+                || !barrel.getPersistentDataContainer().has(expiresAtKey, PersistentDataType.LONG)) {
+            return;
+        }
+        barrel.getPersistentDataContainer().remove(expiresAtKey);
+        barrel.update(true, false);
+    }
+
+    public boolean isExpired(Barrel barrel, long nowMillis) {
+        if (!isTreasure(barrel)) {
+            return false;
+        }
+        long expiresAt = barrel.getPersistentDataContainer()
+                .getOrDefault(expiresAtKey, PersistentDataType.LONG, 0L);
+        return plugin.expiryPolicy().isExpired(expiresAt, nowMillis);
+    }
+
+    /** Removes the barrel only if it is still an unopened cache that is past due. */
+    public boolean removeIfExpired(Block block) {
+        if (block.getType() != Material.BARREL || !(block.getState() instanceof Barrel barrel)
+                || !isExpired(barrel, System.currentTimeMillis())) {
+            return false;
+        }
+        block.setType(Material.AIR, false);
+        return true;
+    }
+
+    private void scheduleExpiry(Block block, long expiryMillis) {
+        long ticks = Math.max(1L, expiryMillis / 50L);
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> removeIfExpired(block), ticks);
     }
 
     public boolean isTreasure(Barrel barrel) {
