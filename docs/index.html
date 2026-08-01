@@ -337,7 +337,12 @@
   <span class="k">lock-seconds:</span> <span class="v">30</span>
 
   <span class="c"># Removes the generated barrel once its inventory is empty.</span>
-  <span class="k">remove-empty-barrels:</span> <span class="v">true</span></code></pre>
+  <span class="k">remove-empty-barrels:</span> <span class="v">true</span>
+
+  <span class="c"># Caches nobody ever opened are cleaned up after this many minutes, so caves</span>
+  <span class="c"># do not slowly fill with abandoned barrels. Opening a cache cancels its</span>
+  <span class="c"># expiry. Set to 0 to keep every unopened cache forever.</span>
+  <span class="k">expire-unopened-minutes:</span> <span class="v">60</span></code></pre>
 
   <h3>Tiers</h3>
   <p>

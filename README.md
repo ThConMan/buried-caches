@@ -63,6 +63,10 @@ trigger:
   cooldown-seconds: 240     # minimum time between finds
   maximum-y: 64             # keeps the mechanic underground
 
+ownership:
+  lock-seconds: 30              # finder-only window on a fresh cache
+  expire-unopened-minutes: 60   # cleans up caches nobody opened (0 = never)
+
 tiers:
   legendary:
     weight: 2
