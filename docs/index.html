@@ -158,7 +158,71 @@
     font-size: 14px;
   }
   @media (max-width: 560px) { h1 { font-size: 32px; } }
-</style>
+
+    /* ── Motion & depth ───────────────────────────────────────────────────
+       Kept deliberately restrained: this page is a serif field-journal, not a
+       neon product site, so the movement is short, warm and low-contrast.
+       Everything collapses to static under prefers-reduced-motion or print. */
+
+    .dig-progress {
+      position: fixed; top: 0; left: 0; z-index: 100;
+      width: 100%; height: 2px;
+      transform: scaleX(var(--p, 0)); transform-origin: 0 50%;
+      background: linear-gradient(90deg, rgba(232,182,76,.35), var(--gold));
+      pointer-events: none;
+    }
+
+    .reveal { opacity: 0; transform: translateY(16px); transition: opacity .65s ease, transform .65s ease; }
+    .reveal.seen { opacity: 1; transform: none; }
+    .reveal[data-d="1"] { transition-delay: .06s; }
+    .reveal[data-d="2"] { transition-delay: .12s; }
+    .reveal[data-d="3"] { transition-delay: .18s; }
+    .reveal[data-d="4"] { transition-delay: .24s; }
+    /* Hard reveal: content must never stay hidden because motion never ran. */
+    .reveal.shown-now { opacity: 1 !important; transform: none !important; transition: none !important; }
+
+    /* The gold rule under each heading is struck rather than simply present. */
+    h2 { position: relative; }
+    h2::after {
+      content: ""; position: absolute; left: 0; bottom: -1px;
+      width: 90px; height: 1px; background: var(--gold);
+      transform: scaleX(0); transform-origin: 0 50%;
+      transition: transform .8s cubic-bezier(.22,.61,.36,1) .1s;
+    }
+    h2.seen::after { transform: scaleX(1); }
+
+    .card, .tier {
+      transition: transform .26s cubic-bezier(.22,.61,.36,1), border-color .26s ease, box-shadow .26s ease;
+    }
+    .card:hover, .tier:hover {
+      transform: translateY(-3px);
+      border-color: rgba(232, 182, 76, .4);
+      box-shadow: 0 14px 30px -16px rgba(0,0,0,.8), inset 0 1px 0 rgba(232, 182, 76, .07);
+    }
+    /* Each tier keeps its own rarity colour on hover instead of all going gold. */
+    .tier.common:hover    { border-color: rgba(127, 201, 92, .5); }
+    .tier.rare:hover      { border-color: rgba(85, 214, 214, .5); }
+    .tier.epic:hover      { border-color: rgba(199, 125, 255, .5); }
+    .tier.legendary:hover { border-color: rgba(232, 182, 76, .55); }
+
+    .badge { transition: border-color .25s ease, color .25s ease, transform .25s ease; }
+    .badge:hover { transform: translateY(-1px); border-color: rgba(232,182,76,.45); color: var(--gold); }
+
+    @media print {
+      .reveal { opacity: 1 !important; transform: none !important; }
+      .dig-progress { display: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        transition-duration: .001ms !important;
+      }
+      .reveal { opacity: 1 !important; transform: none !important; }
+      h2::after { transform: scaleX(1); }
+      .dig-progress { display: none; }
+    }
+
+  </style>
 </head>
 <body>
 
@@ -392,5 +456,55 @@ cd buried-caches
   </div>
 </footer>
 
+<script>
+(function () {
+  'use strict';
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function each(sel, root, fn) {
+    var n = (root || document).querySelectorAll(sel);
+    for (var i = 0; i < n.length; i++) fn(n[i], i);
+  }
+
+  if (!reduce) {
+    var bar = document.createElement('div');
+    bar.className = 'dig-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+    var tick = false;
+    addEventListener('scroll', function () {
+      if (tick) return;
+      tick = true;
+      requestAnimationFrame(function () {
+        var max = document.documentElement.scrollHeight - innerHeight;
+        bar.style.setProperty('--p', max > 0 ? scrollY / max : 0);
+        tick = false;
+      });
+    }, { passive: true });
+  }
+
+  each('h2, section > p, .card, .tier, .steps li, .tablewrap, .badges', document, function (el) {
+    el.classList.add('reveal');
+  });
+  each('.cards, .tiers, .badges', document, function (grid) {
+    each(':scope > *', grid, function (c, i) { c.setAttribute('data-d', Math.min(i + 1, 4)); });
+  });
+
+  function show(el) { el.classList.add('seen'); }
+
+  if (reduce || !('IntersectionObserver' in window)) {
+    each('.reveal', document, function (el) { el.classList.add('seen', 'shown-now'); });
+    return;
+  }
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -10% 0px', threshold: .1 });
+  each('.reveal', document, function (el) { io.observe(el); });
+
+  // Failsafe -- see the note in the stylesheet.
+  setTimeout(function () {
+    each('.reveal:not(.seen)', document, function (el) { el.classList.add('shown-now'); show(el); });
+  }, 1600);
+})();
+</script>
 </body>
 </html>
