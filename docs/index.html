@@ -124,7 +124,9 @@
     padding: 1px 6px;
   }
   pre code { background: none; border: none; padding: 0; }
-  .c { color: #7a6f5c; } .k { color: var(--aqua); } .v { color: var(--yellow); } .s { color: var(--green); }
+  /* Was #7a6f5c, which measured 3.98:1 in the code blocks and failed AA --
+     config comments were the least readable text on the page. 5.2:1 now. */
+  .c { color: #8d8270; } .k { color: var(--aqua); } .v { color: var(--yellow); } .s { color: var(--green); }
 
   table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; }
   th, td { text-align: left; padding: 10px 14px; border: 1px solid var(--border); }
